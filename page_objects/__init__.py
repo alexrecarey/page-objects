@@ -1,5 +1,6 @@
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 # Map PageElement constructor arguments to webdriver locator enums
@@ -58,6 +59,11 @@ class PageElement(object):
     :param context: `bool`
         This element is expected to be called with context
 
+    :param wait_condition: `selenium.webdriver.support import expected_conditions`
+        Expected condition to use in the wait.
+    :param wait_time: `int`
+        Wait in seconds for element to be visible on page. Default 5.
+
     Page Elements are used to access elements on a page. The are constructed
     using this factory method to specify the locator for the element.
 
@@ -70,7 +76,7 @@ class PageElement(object):
     Page Elements act as property descriptors for their Page Object, you can get
     and set them as normal attributes.
     """
-    def __init__(self, context=False, **kwargs):
+    def __init__(self, context=False, wait_condition=None, wait_time=5, **kwargs):
         if not kwargs:
             raise ValueError("Please specify a locator")
         if len(kwargs) > 1:
@@ -78,11 +84,22 @@ class PageElement(object):
         k, v = next(iter(kwargs.items()))
         self.locator = (_LOCATOR_MAP[k], v)
         self.has_context = bool(context)
+        if wait_condition:
+            self.wait_condition = wait_condition
+            self.wait_time = wait_time
 
     def find(self, context):
         try:
             return context.find_element(*self.locator)
         except NoSuchElementException:
+            return None
+
+    def find_delayed(self, context):
+        try:
+            return WebDriverWait(context, self.wait_time).until(
+                self.wait_condition(*self.locator)
+            )
+        except TimeoutException:
             return None
 
     def __get__(self, instance, owner, context=None):
@@ -95,7 +112,10 @@ class PageElement(object):
         if not context:
             context = instance.w
 
-        return self.find(context)
+        if self.wait_condition:
+            return self.find_delayed(context)
+        else:
+            return self.find(context)
 
     def __set__(self, instance, value):
         if self.has_context:
