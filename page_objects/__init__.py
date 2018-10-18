@@ -96,7 +96,7 @@ class PageElement(object):
     def find_delayed(self, context):
         try:
             return WebDriverWait(context, self.wait_time).until(
-                self.wait_condition(*self.locator)
+                self.wait_condition(self.locator)  # wait_condition takes locater in tuple form
             )
         except TimeoutException:
             return None
@@ -147,6 +147,24 @@ class MultiPageElement(PageElement):
         if not elems:
             raise ValueError("Can't set value, no elements found")
         [elem.send_keys(value) for elem in elems]
+
+
+class IframeElement(object):
+    """ Like `PageElement` but inside an iframe.
+
+    """
+    def __init__(self, iframe_element):
+        if iframe_element is None:
+            raise ValueError("Please specify an iframe")
+        self.iframe = iframe_element
+        self.driver = iframe_element.parent
+
+    def __enter__(self):
+        # if self.driver._current_active_frame: ??? keep context here somewhere
+        self.driver.switch_to.frame(self.iframe)
+
+    def __exit__(self, type_, value, traceback):
+        self.driver.switch_to_default_content()
 
 
 # Backwards compatibility with previous versions that used factory methods
