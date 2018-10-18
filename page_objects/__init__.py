@@ -84,9 +84,8 @@ class PageElement(object):
         k, v = next(iter(kwargs.items()))
         self.locator = (_LOCATOR_MAP[k], v)
         self.has_context = bool(context)
-        if wait_condition:
-            self.wait_condition = wait_condition
-            self.wait_time = wait_time
+        self.wait_condition = wait_condition
+        self.wait_time = wait_time
 
     def find(self, context):
         try:
